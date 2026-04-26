@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文件下载中心 · FileVault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+       DESIGN TOKENS — 只需改这里就能换主题色
+    ============================================================ */
+    :root {
+      --accent:       #6c63ff;
+      --accent-2:     #a78bfa;
+      --accent-3:     #38bdf8;
+      --bg-deep:      #07080f;
+      --bg-card:      rgba(255,255,255,0.035);
+      --bg-card-h:    rgba(255,255,255,0.07);
+      --border:       rgba(255,255,255,0.08);
+      --border-h:     rgba(108,99,255,0.55);
+      --text-primary: #f0f2ff;
+      --text-sec:     #8b8fa8;
+      --text-muted:   #4a4d63;
+      --radius-card:  18px;
+      --radius-btn:   12px;
+      --shadow-card:  0 8px 40px rgba(0,0,0,0.55);
+      --shadow-glow:  0 0 40px rgba(108,99,255,0.18);
+      --trans-fast:   0.18s cubic-bezier(0.4,0,0.2,1);
+      --trans-med:    0.35s cubic-bezier(0.4,0,0.2,1);
+      --trans-slow:   0.6s cubic-bezier(0.22,1,0.36,1);
+    }
+
+    /* ============================================================
+       RESET & BASE
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { text-decoration: none; color: inherit; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+    input, select { font-family: inherit; }
+
+    /* ============================================================
+       ANIMATED BACKGROUND — 星云粒子层
+    ============================================================ */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .bg-gradient {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% -10%, rgba(108,99,255,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(56,189,248,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 50% 50%, rgba(167,139,250,0.05) 0%, transparent 80%);
+      pointer-events: none;
+    }
+    .bg-grid {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 64px 64px;
+      pointer-events: none;
+      mask-image: radial-gradient(ellipse 100% 100% at 50% 0%, black 20%, transparent 80%);
+    }
+
+    /* ============================================================
+       LAYOUT WRAPPER
+    ============================================================ */
+    .site-wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 32px;
+    }
+
+    /* ============================================================
+       NAVBAR
+    ============================================================ */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 68px;
+      background: rgba(7,8,15,0.75);
+      backdrop-filter: blur(24px) saturate(1.6);
+      -webkit-backdrop-filter: blur(24px) saturate(1.6);
+      border-bottom: 1px solid var(--border);
+      transition: box-shadow var(--trans-med);
+    }
+    .navbar.scrolled { box-shadow: 0 1px 0 rgba(108,99,255,0.2), var(--shadow-card); }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 1.2rem;
+      letter-spacing: -0.02em;
+    }
+    .nav-logo-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-3));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      box-shadow: 0 4px 16px rgba(108,99,255,0.4);
+      animation: logoFloat 4s ease-in-out infinite;
+    }
+    @keyframes logoFloat {
+      0%,100% { transform: translateY(0) rotate(0deg); }
+      50%      { transform: translateY(-3px) rotate(2deg); }
+    }
+    .nav-logo span.brand-dot { color: var(--accent-2); }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .nav-stat {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.8rem; color: var(--text-sec);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+    }
+    .nav-stat .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #34d399;
+      animation: pulse 2s infinite;
+      box-shadow: 0 0 6px #34d399;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+    .nav-btn {
+      padding: 8px 20px;
+      border-radius: 10px;
+      font-size: 0.85rem; font-weight: 600;
+      color: var(--text-primary);
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      transition: transform var(--trans-fast), box-shadow var(--trans-fast), opacity var(--trans-fast);
+      box-shadow: 0 4px 20px rgba(108,99,255,0.35);
+    }
+    .nav-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(108,99,255,0.5); }
+    .nav-btn:active { transform: translateY(0); }
+
+    /* ============================================================
+       HERO SECTION
+    ============================================================ */
+    .hero {
+      padding: 100px 0 80px;
+      text-align: center;
+      position: relative;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: rgba(108,99,255,0.12);
+      border: 1px solid rgba(108,99,255,0.3);
+      font-size: 0.78rem; font-weight: 600;
+      color: var(--accent-2);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      animation: fadeInUp 0.8s var(--trans-slow) both;
+    }
+    .hero-badge::before {
+      content: '';
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent-2);
+      animation: pulse 2s infinite;
+    }
+    .hero h1 {
+      font-size: clamp(2.8rem, 6vw, 5.5rem);
+      font-weight: 900;
+      line-height: 1.08;
+      letter-spacing: -0.035em;
+      animation: fadeInUp 0.8s 0.1s var(--trans-slow) both;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(135deg, #fff 0%, var(--accent-2) 40%, var(--accent-3) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      margin: 24px auto 0;
+      max-width: 560px;
+      font-size: 1.1rem;
+      color: var(--text-sec);
+      line-height: 1.7;
+      animation: fadeInUp 0.8s 0.2s var(--trans-slow) both;
+    }
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      margin-top: 52px;
+      animation: fadeInUp 0.8s 0.3s var(--trans-slow) both;
+    }
+    .hero-stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .hero-stat-num {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--text-primary), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-stat-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    .hero-divider {
+      width: 1px; height: 40px;
+      background: var(--border);
+      align-self: center;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ============================================================
+       SEARCH & FILTER BAR
+    ============================================================ */
+    .search-bar-wrap {
+      max-width: 760px;
+      margin: 0 auto 64px;
+      animation: fadeInUp 0.8s 0.35s var(--trans-slow) both;
+    }
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 6px 6px 6px 20px;
+      transition: border-color var(--trans-fast), box-shadow var(--trans-fast), background var(--trans-fast);
+      box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+    }
+    .search-bar:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(108,99,255,0.15), 0 8px 40px rgba(108,99,255,0.2);
+      background: rgba(255,255,255,0.06);
+    }
+    .search-icon { color: var(--text-muted); flex-shrink: 0; margin-right: 12px; }
+    .search-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 400;
+      caret-color: var(--accent);
+    }
+    .search-input::placeholder { color: var(--text-muted); }
+    .search-clear {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--trans-fast);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .search-clear.visible { opacity: 1; pointer-events: auto; }
+    .search-clear:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+    .search-sep { width: 1px; height: 24px; background: var(--border); margin: 0 10px; }
+    .search-submit {
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all var(--trans-fast);
+      box-shadow: 0 4px 16px rgba(108,99,255,0.3);
+      white-space: nowrap;
+    }
+    .search-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(108,99,255,0.5); }
+    .search-submit:active { transform: none; }
+
+    /* ============================================================
+       CATEGORY TABS
+    ============================================================ */
+    .tabs-wrap {
+      margin-bottom: 32px;
+      animation: fadeInUp 0.8s 0.4s var(--trans-slow) both;
+    }
+    .tabs-scroll {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+    }
+    .tabs-scroll::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-sec);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      transition: all var(--trans-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    .tab-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      opacity: 0;
+      transition: opacity var(--trans-fast);
+    }
+    .tab-btn > * { position: relative; z-index: 1; }
+    .tab-btn:hover {
+      border-color: rgba(108,99,255,0.4);
+      color: var(--text-primary);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .tab-btn.active {
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 20px rgba(108,99,255,0.4);
+    }
+    .tab-btn.active::before { opacity: 1; }
+    .tab-icon { font-size: 1.05rem; line-height: 1; }
+    .tab-count {
+      font-size: 0.72rem;
+      background: rgba(255,255,255,0.15);
+      border-radius: 100px;
+      padding: 1px 7px;
+      font-weight: 700;
+    }
+    .tab-btn:not(.active) .tab-count { background: rgba(255,255,255,0.07); }
+
+    /* ============================================================
+       SORT & VIEW CONTROLS
+    ============================================================ */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      gap: 12px;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.8s 0.45s var(--trans-slow) both;
+    }
+    .sort-btns {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .sort-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem; font-weight: 500;
+      color: var(--text-sec);
+      transition: all var(--trans-fast);
+    }
+    .sort-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+    .sort-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 10px rgba(108,99,255,0.4); }
+    .sort-arrow { font-size: 0.7rem; transition: transform var(--trans-fast); }
+    .sort-btn.asc .sort-arrow { transform: rotate(180deg); }
+    .view-btns {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .view-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+      transition: all var(--trans-fast);
+      font-size: 1rem;
+    }
+    .view-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+    .view-btn.active { background: var(--accent); color: #fff; }
+    .result-info { font-size: 0.82rem; color: var(--text-muted); }
+    .result-info span { color: var(--text-primary); font-weight: 600; }
+
+    /* ============================================================
+       FILE GRID
+    ============================================================ */
+    .files-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+      animation: fadeInUp 0.8s 0.5s var(--trans-slow) both;
+    }
+    .files-grid.list-view {
+      grid-template-columns: 1fr;
+    }
+
+    /* ============================================================
+       FILE CARD
+    ============================================================ */
+    .file-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: transform var(--trans-med), border-color var(--trans-med),
+                  box-shadow var(--trans-med), background var(--trans-med);
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+    }
+    .file-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity var(--trans-med);
+    }
+    .file-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 60% at var(--mx,50%) var(--my,50%),
+        rgba(108,99,255,0.08) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity var(--trans-med);
+      pointer-events: none;
+    }
+    .file-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-h);
+      box-shadow: var(--shadow-glow), var(--shadow-card);
+      background: var(--bg-card-h);
+    }
+    .file-card:hover::before { opacity: 1; }
+    .file-card:hover::after  { opacity: 1; }
+
+    /* List view overrides */
+    .list-view .file-card {
+      flex-direction: row;
+      align-items: center;
+      gap: 20px;
+      padding: 16px 22px;
+    }
+    .list-view .file-card .card-meta   { flex: 1; }
+    .list-view .file-card .card-bottom { margin-top: 0; }
+    .list-view .file-card .file-desc   { display: none; }
+    .list-view .file-card .card-tags   { display: none; }
+
+    .card-header { display: flex; align-items: flex-start; gap: 14px; }
+    .file-icon-wrap {
+      width: 52px; height: 52px;
+      flex-shrink: 0;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform var(--trans-med);
+    }
+    .file-card:hover .file-icon-wrap { transform: scale(1.05) rotate(-2deg); }
+    .file-icon-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: inherit;
+      filter: blur(12px);
+      opacity: 0.4;
+      transform: scale(1.5);
+    }
+    .file-icon-wrap span { position: relative; z-index: 1; line-height: 1; }
+
+    /* Type colors */
+    .type-exe   { background: linear-gradient(135deg,#3b0d6e,#6c63ff22); border:1px solid #6c63ff44; }
+    .type-apk   { background: linear-gradient(135deg,#0d3b2e,#34d39922); border:1px solid #34d39944; }
+    .type-hap   { background: linear-gradient(135deg,#0d1f3b,#38bdf822); border:1px solid #38bdf844; }
+    .type-doc   { background: linear-gradient(135deg,#0d1f6e,#2563eb22); border:1px solid #2563eb44; }
+    .type-ppt   { background: linear-gradient(135deg,#3b1a0d,#f9731622); border:1px solid #f9731644; }
+    .type-excel { background: linear-gradient(135deg,#0d2e1a,#22c55e22); border:1px solid #22c55e44; }
+    .type-code  { background: linear-gradient(135deg,#1a0d3b,#8b5cf622); border:1px solid #8b5cf644; }
+    .type-audio { background: linear-gradient(135deg,#3b0d2e,#ec489922); border:1px solid #ec489944; }
+    .type-video { background: linear-gradient(135deg,#0d1f3b,#3b82f622); border:1px solid #3b82f644; }
+    .type-other { background: linear-gradient(135deg,#1a1a1a,#71717a22); border:1px solid #71717a44; }
+
+    .card-meta { flex: 1; min-width: 0; }
+    .file-name {
+      font-size: 0.97rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+    .file-ext {
+      display: inline-flex; align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 500;
+      border: 1px solid;
+    }
+
+    /* Ext badge colors */
+    .ext-exe   { color:#a78bfa; border-color:#a78bfa44; background:#a78bfa11; }
+    .ext-apk   { color:#34d399; border-color:#34d39944; background:#34d39911; }
+    .ext-hap   { color:#38bdf8; border-color:#38bdf844; background:#38bdf811; }
+    .ext-docx  { color:#60a5fa; border-color:#60a5fa44; background:#60a5fa11; }
+    .ext-pptx  { color:#fb923c; border-color:#fb923c44; background:#fb923c11; }
+    .ext-xlsx  { color:#4ade80; border-color:#4ade8044; background:#4ade8011; }
+    .ext-zip   { color:#fbbf24; border-color:#fbbf2444; background:#fbbf2411; }
+    .ext-code  { color:#c084fc; border-color:#c084fc44; background:#c084fc11; }
+    .ext-mp3   { color:#f472b6; border-color:#f472b644; background:#f472b611; }
+    .ext-mp4   { color:#818cf8; border-color:#818cf844; background:#818cf811; }
+    .ext-other { color:#9ca3af; border-color:#9ca3af44; background:#9ca3af11; }
+
+    .card-new-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.68rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 100px;
+      background: rgba(52,211,153,0.15);
+      color: #34d399;
+      border: 1px solid rgba(52,211,153,0.3);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .card-new-badge::before {
+      content:'';
+      width:5px; height:5px; border-radius:50%;
+      background:#34d399;
+      animation: pulse 2s infinite;
+    }
+
+    .file-desc {
+      font-size: 0.83rem;
+      color: var(--text-sec);
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-info-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .info-chip {
+      display: flex; align-items: center; gap: 4px;
+      white-space: nowrap;
+    }
+    .info-chip svg { opacity: 0.6; }
+
+    .card-tags {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .tag {
+      font-size: 0.72rem; font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--text-sec);
+      transition: all var(--trans-fast);
+    }
+    .tag:hover { border-color: var(--accent); color: var(--accent-2); cursor: pointer; }
+
+    .card-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+
+    .file-size-wrap {
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .file-size {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.02em;
+    }
+    .file-date { font-size: 0.75rem; color: var(--text-muted); }
+
+    .download-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 20px;
+      border-radius: 11px;
+      font-size: 0.87rem; font-weight: 600;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      transition: all var(--trans-fast);
+      box-shadow: 0 4px 16px rgba(108,99,255,0.3);
+      position: relative;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .download-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+      transform: translateX(-100%);
+      transition: transform 0.5s ease;
+    }
+    .download-btn:hover::before { transform: translateX(100%); }
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(108,99,255,0.55);
+    }
+    .download-btn:active { transform: scale(0.97); }
+    .download-btn svg { transition: transform var(--trans-fast); }
+    .download-btn:hover svg { transform: translateY(2px); }
+
+    /* Download ripple animation */
+    .download-btn.downloading {
+      pointer-events: none;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+    }
+    .download-btn.downloading .btn-text { display: none; }
+    .download-btn .btn-downloading { display: none; }
+    .download-btn.downloading .btn-downloading { display: flex; align-items: center; gap: 6px; }
+    .spin {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Progress bar on card */
+    .card-progress {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-3));
+      width: 0%;
+      transition: width 0.05s linear;
+      border-radius: 0 0 0 var(--radius-card);
+    }
+
+    /* ============================================================
+       EMPTY STATE
+    ============================================================ */
+    .empty-state {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px;
+      text-align: center;
+      gap: 16px;
+      display: none;
+    }
+    .empty-state.visible { display: flex; }
+    .empty-icon {
+      font-size: 4rem;
+      opacity: 0.3;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100%{ transform: translateY(0) rotate(-5deg); }
+      50%    { transform: translateY(-12px) rotate(5deg); }
+    }
+    .empty-state h3 { font-size: 1.2rem; color: var(--text-sec); font-weight: 600; }
+    .empty-state p  { font-size: 0.88rem; color: var(--text-muted); }
+
+    /* ============================================================
+       SECTION DIVIDER (按类型分组时的标题)
+    ============================================================ */
+    .section-header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 0 4px;
+      margin-top: 8px;
+    }
+    .section-header-icon {
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .section-header-text { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
+    .section-header-line { flex: 1; height: 1px; background: var(--border); }
+    .section-header-count {
+      font-size: 0.75rem; color: var(--text-muted);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 2px 10px; border-radius: 100px;
+    }
+
+    /* ============================================================
+       TOAST NOTIFICATION
+    ============================================================ */
+    .toast-container {
+      position: fixed;
+      bottom: 32px; right: 32px;
+      z-index: 9999;
+      display: flex; flex-direction: column; gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 20px;
+      border-radius: 14px;
+      background: rgba(20,20,35,0.95);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      font-size: 0.88rem;
+      font-weight: 500;
+      pointer-events: auto;
+      transform: translateX(120%);
+      transition: transform 0.5s cubic-bezier(0.22,1,0.36,1), opacity 0.5s;
+      opacity: 0;
+      min-width: 280px;
+      max-width: 360px;
+    }
+    .toast.show { transform: translateX(0); opacity: 1; }
+    .toast.hide { transform: translateX(120%); opacity: 0; }
+    .toast-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .toast-body { flex: 1; }
+    .toast-title { font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+    .toast-msg   { color: var(--text-sec); font-size: 0.8rem; }
+    .toast-close {
+      width: 24px; height: 24px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 1rem;
+      transition: all var(--trans-fast);
+    }
+    .toast-close:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+    .toast-progress {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius: 0 0 14px 14px;
+      animation: toastProgress 3s linear forwards;
+    }
+    @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
+
+    /* ============================================================
+       FOOTER
+    ============================================================ */
+    .footer {
+      margin-top: 100px;
+      padding: 48px 0 32px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      animation: fadeInUp 0.8s 0.6s var(--trans-slow) both;
+    }
+    .footer-logo {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 1.1rem;
+      margin-bottom: 16px;
+    }
+    .footer p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.8;
+    }
+    .footer a { color: var(--accent-2); transition: color var(--trans-fast); }
+    .footer a:hover { color: var(--text-primary); }
+    .footer-links {
+      display: flex; justify-content: center; gap: 24px;
+      margin-top: 20px;
+    }
+    .footer-link {
+      font-size: 0.82rem; color: var(--text-muted);
+      transition: color var(--trans-fast);
+    }
+    .footer-link:hover { color: var(--text-primary); }
+
+    /* ============================================================
+       SCROLL TO TOP
+    ============================================================ */
+    .scroll-top {
+      position: fixed;
+      bottom: 32px; left: 32px;
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: rgba(20,20,35,0.9);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      color: var(--text-sec);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      z-index: 99;
+      transition: all var(--trans-med);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+    }
+    .scroll-top.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    .scroll-top:hover {
+      background: var(--accent);
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(108,99,255,0.4);
+    }
+
+    /* ============================================================
+       CURSOR GLOW (桌面端)
+    ============================================================ */
+    .cursor-glow {
+      position: fixed;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(108,99,255,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      transform: translate(-50%, -50%);
+      transition: left 0.15s ease, top 0.15s ease;
+    }
+
+    /* ============================================================
+       CARD ENTER ANIMATIONS
+    ============================================================ */
+    .file-card {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .file-card.visible {
+      animation: cardEnter 0.5s var(--trans-slow) forwards;
+    }
+    @keyframes cardEnter {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 768px) {
+      .site-wrap { padding: 0 16px; }
+      .navbar { padding: 0 16px; }
+      .hero { padding: 60px 0 50px; }
+      .hero h1 { font-size: 2.4rem; }
+      .hero-stats { gap: 24px; }
+      .hero-stat-num { font-size: 1.5rem; }
+      .files-grid { grid-template-columns: 1fr; }
+      .controls-row { gap: 8px; }
+      .toast-container { bottom: 16px; right: 16px; left: 16px; }
+      .toast { min-width: unset; }
+      .scroll-top { bottom: 16px; left: 16px; }
+    }
+
+    /* ============================================================
+       SKELETON LOADER (首次加载)
+    ============================================================ */
+    .skeleton {
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 25%,
+        rgba(255,255,255,0.08) 50%,
+        rgba(255,255,255,0.04) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .skeleton-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 22px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .sk-row   { display: flex; align-items: center; gap: 14px; }
+    .sk-icon  { width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0; }
+    .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .sk-line  { height: 12px; }
+    .sk-line.w80 { width: 80%; }
+    .sk-line.w50 { width: 50%; }
+    .sk-line.w30 { width: 30%; }
+    .sk-body  { height: 40px; }
+    .sk-foot  { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); }
+    .sk-btn   { width: 110px; height: 38px; border-radius: 11px; }
+    .sk-size  { width: 60px; height: 30px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- 鼠标光晕 -->
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<!-- 背景层 -->
+<canvas id="bg-canvas"></canvas>
+<div class="bg-gradient"></div>
+<div class="bg-grid"></div>
+
+<!-- Toast 容器 -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- 回顶部 -->
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="返回顶部">↑</button>
+
+<!-- ============================================================
+     NAVBAR
+============================================================ -->
+<nav class="navbar" id="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">⬡</div>
+    File<span class="brand-dot">Vault</span>
+  </div>
+  <div class="nav-actions">
+    <div class="nav-stat">
+      <span class="dot"></span>
+      <span id="nav-file-count">-- 个文件</span>
+    </div>
+    <button class="nav-btn" onclick="document.getElementById('search-input').focus()">
+      🔍 搜索文件
+    </button>
+  </div>
+</nav>
+
+<!-- ============================================================
+     MAIN
+============================================================ -->
+<main>
+  <div class="site-wrap">
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-badge">Personal File Center</div>
+      <h1>
+        我的<span class="grad">文件</span><br/>下载中心
+      </h1>
+      <p>所有资源集中管理，随时安全下载。支持按类型、时间、大小多维度排序筛选。</p>
+      <div class="hero-stats">
+        <div class="hero-stat-item">
+          <div class="hero-stat-num" id="stat-total">0</div>
+          <div class="hero-stat-label">总文件数</div>
+        </div>
+        <div class="hero-divider"></div>
+        <div class="hero-stat-item">
+          <div class="hero-stat-num" id="stat-size">0 MB</div>
+          <div class="hero-stat-label">总大小</div>
+        </div>
+        <div class="hero-divider"></div>
+        <div class="hero-stat-item">
+          <div class="hero-stat-num" id="stat-types">6</div>
+          <div class="hero-stat-label">文件类型</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEARCH -->
+    <div class="search-bar-wrap">
+      <div class="search-bar">
+        <svg class="search-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+             viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="search-input" id="search-input" type="text"
+               placeholder="搜索文件名、标签或描述…" autocomplete="off" spellcheck="false"/>
+        <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
+        <div class="search-sep"></div>
+        <button class="search-submit" onclick="doSearch()">搜索</button>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs-wrap">
+      <div class="tabs-scroll" id="tabs-scroll">
+        <!-- 动态生成 -->
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls-row">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="sort-btns">
+          <button class="sort-btn active" data-sort="time" onclick="setSort('time',this)">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+            </svg>
+            更新时间
+            <span class="sort-arrow">↓</span>
+          </button>
+          <button class="sort-btn" data-sort="size" onclick="setSort('size',this)">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            文件大小
+            <span class="sort-arrow">↓</span>
+          </button>
+          <button class="sort-btn" data-sort="name" onclick="setSort('name',this)">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/>
+              <line x1="12" y1="4" x2="12" y2="20"/>
+            </svg>
+            文件名称
+            <span class="sort-arrow">↓</span>
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="result-info">共 <span id="result-count">0</span> 个文件</div>
+        <div class="view-btns">
+          <button class="view-btn active" id="view-grid" onclick="setView('grid')" title="网格视图">
+            <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M1 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2zM1 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V7zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V7zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-2z"/>
+            </svg>
+          </button>
+          <button class="view-btn" id="view-list" onclick="setView('list')" title="列表视图">
+            <svg width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILE GRID -->
+    <div class="files-grid" id="files-grid">
+      <!-- 骨架屏 -->
+      <div class="skeleton-card" id="sk1">
+        <div class="sk-row">
+          <div class="skeleton sk-icon"></div>
+          <div class="sk-lines">
+            <div class="skeleton sk-line w80"></div>
+            <div class="skeleton sk-line w50"></div>
+          </div>
+        </div>
+        <div class="skeleton sk-body"></div>
+        <div class="sk-foot">
+          <div class="skeleton sk-size"></div>
+          <div class="skeleton sk-btn"></div>
+        </div>
+      </div>
+      <div class="skeleton-card" id="sk2">
+        <div class="sk-row">
+          <div class="skeleton sk-icon"></div>
+          <div class="sk-lines">
+            <div class="skeleton sk-line w80"></div>
+            <div class="skeleton sk-line w30"></div>
+          </div>
+        </div>
+        <div class="skeleton sk-body"></div>
+        <div class="sk-foot">
+          <div class="skeleton sk-size"></div>
+          <div class="skeleton sk-btn"></div>
+        </div>
+      </div>
+      <div class="skeleton-card" id="sk3">
+        <div class="sk-row">
+          <div class="skeleton sk-icon"></div>
+          <div class="sk-lines">
+            <div class="skeleton sk-line w80"></div>
+            <div class="skeleton sk-line w50"></div>
+          </div>
+        </div>
+        <div class="skeleton sk-body"></div>
+        <div class="sk-foot">
+          <div class="skeleton sk-size"></div>
+          <div class="skeleton sk-btn"></div>
+        </div>
+      </div>
+      <!-- 空状态 -->
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>未找到匹配的文件</h3>
+        <p>换个关键词试试，或切换分类标签</p>
+      </div>
+    </div>
+
+  </div><!-- /site-wrap -->
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="site-wrap">
+    <div class="footer-logo">
+      <div class="nav-logo-icon" style="width:30px;height:30px;font-size:0.85rem;">⬡</div>
+      FileVault
+    </div>
+    <p>个人文件下载中心 · 所有文件均为个人合法持有</p>
+    <p style="margin-top:6px;">© <span id="year"></span> FileVault. Built with LitDDD</p>
+    <div class="footer-links">
+      <a class="footer-link" href="#">使用说明</a>
+      <a class="footer-link" href="#">隐私说明</a>
+      <a class="footer-link" href="https://www.douyin.com/user/MS4wLjABAAAACQczOtUtm27WBmLg8dcGpgTrWXR6LjKp2lyJJS3XwnM?from_tab_name=main">联系我</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ================================================================
+   ██████████████████████████████████████████████
+   ██                                          ██
+   ██   📁 文件数据配置区 —— 在这里维护文件列表  ██
+   ██                                          ██
+   ██████████████████████████████████████████████
+
+   字段说明：
+   ┌─────────────┬────────────────────────────────────────────────────┐
+   │ id          │ 唯一标识（随意，不重复即可）                         │
+   │ name        │ 文件显示名称                                        │
+   │ ext         │ 文件后缀（小写，如 exe / apk / docx / mp4 ...）     │
+   │ category    │ 分类：software / document / code / audio / video / other │
+   │ size        │ 文件大小（字符串，如 "12.5 MB" / "1.2 GB"）         │
+   │ sizeBytes   │ 字节数（用于大小排序，填实际值）                     │
+   │ date        │ 更新日期（YYYY-MM-DD）                              │
+   │ desc        │ 简短描述                                            │
+   │ tags        │ 标签数组                                            │
+   │ url         │ 下载链接（相对路径或绝对链接）                       │
+   │ isNew       │ true = 显示 NEW 标记（可选，默认 false）             │
+   │ version     │ 版本号（可选）                                      │
+   └─────────────┴────────────────────────────────────────────────────┘
+================================================================ */
+
+const FILES = [
+
+  /* ── 软件 · Software ─────────────────────────────────────── */
+  {
+    id: 1,
+    name: "ByeBye极域windows版",
+    ext: "exe",
+    category: "software",
+    size: "3.02 MB",
+    sizeBytes: 3176096,
+    date: "2026-04-26",
+    desc: "byebye极域，支持 Win7/10/11",
+    tags: ["Windows", "安装包", "极域"],
+    url: "downloads/byebyejiyu.exe",
+    isNew: true,
+    version: "v2.1.0"
+  }
+
+  /*
+  ════════════════════════════════════════════
+  ➕ 添加新文件：复制上面任一条目，修改字段即可
+  ════════════════════════════════════════════
+  {
+    id: 15,
+    name: "文件名称",
+    ext: "后缀",
+    category: "software | document | code | audio | video | other",
+    size: "大小字符串",
+    sizeBytes: 字节数,
+    date: "YYYY-MM-DD",
+    desc: "描述文字",
+    tags: ["标签1", "标签2"],
+    url: "下载链接",
+    isNew: false,
+    version: null
+  },
+  */
+];
+
+/* ================================================================
+   CATEGORY 配置 — 分类元数据（一般不需要修改）
+================================================================ */
+const CATEGORIES = {
+  all:      { label: "全部",   icon: "🗂️",  typeClass: "",        extClass: "ext-other" },
+  software: { label: "软件",   icon: "📦",  typeClass: "type-exe", extClass: "ext-exe"  },
+  document: { label: "文档",   icon: "📄",  typeClass: "type-doc", extClass: "ext-docx" },
+  code:     { label: "代码",   icon: "💻",  typeClass: "type-code",extClass: "ext-code" },
+  audio:    { label: "音频",   icon: "🎵",  typeClass: "type-audio",extClass: "ext-mp3" },
+  video:    { label: "视频",   icon: "🎬",  typeClass: "type-video",extClass: "ext-mp4" },
+  other:    { label: "其他",   icon: "📁",  typeClass: "type-other",extClass: "ext-other"}
+};
+
+const EXT_TYPE_MAP = {
+  exe:  { typeClass:"type-exe",   extClass:"ext-exe"  },
+  apk:  { typeClass:"type-apk",   extClass:"ext-apk"  },
+  hap:  { typeClass:"type-hap",   extClass:"ext-hap"  },
+  docx: { typeClass:"type-doc",   extClass:"ext-docx" },
+  doc:  { typeClass:"type-doc",   extClass:"ext-docx" },
+  pptx: { typeClass:"type-ppt",   extClass:"ext-pptx" },
+  ppt:  { typeClass:"type-ppt",   extClass:"ext-pptx" },
+  xlsx: { typeClass:"type-excel", extClass:"ext-xlsx" },
+  xls:  { typeClass:"type-excel", extClass:"ext-xlsx" },
+  zip:  { typeClass:"type-code",  extClass:"ext-zip"  },
+  rar:  { typeClass:"type-code",  extClass:"ext-zip"  },
+  "7z": { typeClass:"type-code",  extClass:"ext-zip"  },
+  mp3:  { typeClass:"type-audio", extClass:"ext-mp3"  },
+  flac: { typeClass:"type-audio", extClass:"ext-mp3"  },
+  wav:  { typeClass:"type-audio", extClass:"ext-mp3"  },
+  m4a:  { typeClass:"type-audio", extClass:"ext-mp3"  },
+  mp4:  { typeClass:"type-video", extClass:"ext-mp4"  },
+  mov:  { typeClass:"type-video", extClass:"ext-mp4"  },
+  mkv:  { typeClass:"type-video", extClass:"ext-mp4"  },
+};
+
+const EXT_ICON_MAP = {
+  exe:"⚙️", apk:"🤖", hap:"🌸",
+  docx:"📝", doc:"📝",
+  pptx:"📊", ppt:"📊",
+  xlsx:"📈", xls:"📈",
+  zip:"📦", rar:"📦", "7z":"📦",
+  mp3:"🎵", flac:"🎵", wav:"🎵",m4a:"🎵",
+  mp4:"🎬", mov:"🎬", mkv:"🎬",
+};
+
+/* ================================================================
+   STATE
+================================================================ */
+let currentTab    = "all";
+let currentSort   = "time";
+let sortAsc       = false;   // false = 降序（最新/最大在前）
+let currentView   = "grid";
+let searchQuery   = "";
+let filteredFiles = [...FILES];
+
+/* ================================================================
+   INIT
+================================================================ */
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("year").textContent = new Date().getFullYear();
+
+  // 模拟加载延迟，展示骨架屏
+  setTimeout(() => {
+    removeSkeleton();
+    buildTabs();
+    applyFilters();
+    updateHeroStats();
+    initParticles();
+    initCursorGlow();
+    initScrollEffects();
+    initCardMouseEffect();
+    initSearchInput();
+  }, 900);
+});
+
+/* ================================================================
+   SKELETON REMOVE
+================================================================ */
+function removeSkeleton() {
+  ["sk1","sk2","sk3"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.opacity = "0"; el.style.transition = "opacity 0.3s"; setTimeout(()=>el.remove(),300); }
+  });
+}
+
+/* ================================================================
+   BUILD TABS
+================================================================ */
+function buildTabs() {
+  const wrap = document.getElementById("tabs-scroll");
+  wrap.innerHTML = "";
+
+  const counts = {};
+  counts.all = FILES.length;
+  FILES.forEach(f => { counts[f.category] = (counts[f.category]||0)+1; });
+
+  Object.entries(CATEGORIES).forEach(([key, cat]) => {
+    const cnt = counts[key] || 0;
+    if (key !== "all" && cnt === 0) return;
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (key === currentTab ? " active" : "");
+    btn.dataset.tab = key;
+    btn.innerHTML = `
+      <span class="tab-icon">${cat.icon}</span>
+      <span>${cat.label}</span>
+      <span class="tab-count">${cnt}</span>
+    `;
+    btn.addEventListener("click", () => switchTab(key));
+    wrap.appendChild(btn);
+  });
+}
+
+/* ================================================================
+   SWITCH TAB
+================================================================ */
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".tab-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.tab === tab);
+  });
+  applyFilters();
+}
+
+/* ================================================================
+   SORT
+================================================================ */
+function setSort(sortKey, btnEl) {
+  if (currentSort === sortKey) {
+    sortAsc = !sortAsc;
+    btnEl.classList.toggle("asc", sortAsc);
+  } else {
+    currentSort = sortKey;
+    sortAsc = false;
+    document.querySelectorAll(".sort-btn").forEach(b => {
+      b.classList.remove("active","asc");
+    });
+    btnEl.classList.add("active");
+  }
+  applyFilters();
+}
+
+/* ================================================================
+   VIEW
+================================================================ */
+function setView(view) {
+  currentView = view;
+  const grid = document.getElementById("files-grid");
+  grid.classList.toggle("list-view", view === "list");
+  document.getElementById("view-grid").classList.toggle("active", view === "grid");
+  document.getElementById("view-list").classList.toggle("active", view === "list");
+}
+
+/* ================================================================
+   SEARCH
+================================================================ */
+function initSearchInput() {
+  const inp   = document.getElementById("search-input");
+  const clear = document.getElementById("search-clear");
+  inp.addEventListener("input", () => {
+    searchQuery = inp.value.trim().toLowerCase();
+    clear.classList.toggle("visible", searchQuery.length > 0);
+    applyFilters();
+  });
+  inp.addEventListener("keydown", e => { if(e.key === "Enter") doSearch(); });
+}
+function doSearch() { applyFilters(); }
+function clearSearch() {
+  const inp   = document.getElementById("search-input");
+  const clear = document.getElementById("search-clear");
+  inp.value   = "";
+  searchQuery = "";
+  clear.classList.remove("visible");
+  applyFilters();
+  inp.focus();
+}
+
+/* ================================================================
+   APPLY FILTERS + SORT + RENDER
+================================================================ */
+function applyFilters() {
+  // 1. 过滤
+  filteredFiles = FILES.filter(f => {
+    const matchTab = currentTab === "all" || f.category === currentTab;
+    const q = searchQuery;
+    const matchSearch = !q ||
+      f.name.toLowerCase().includes(q) ||
+      f.desc.toLowerCase().includes(q) ||
+      f.ext.toLowerCase().includes(q)  ||
+      (f.tags && f.tags.some(t => t.toLowerCase().includes(q)));
+    return matchTab && matchSearch;
+  });
+
+  // 2. 排序
+  filteredFiles.sort((a, b) => {
+    let va, vb;
+    if (currentSort === "time") {
+      va = new Date(a.date).getTime();
+      vb = new Date(b.date).getTime();
+    } else if (currentSort === "size") {
+      va = a.sizeBytes;
+      vb = b.sizeBytes;
+    } else {
+      va = a.name.toLowerCase();
+      vb = b.name.toLowerCase();
+      return sortAsc ? va.localeCompare(vb,"zh") : vb.localeCompare(va,"zh");
+    }
+    return sortAsc ? va - vb : vb - va;
+  });
+
+  // 3. 渲染
+  renderCards();
+  document.getElementById("result-count").textContent = filteredFiles.length;
+}
+
+/* ================================================================
+   RENDER CARDS
+================================================================ */
+function renderCards() {
+  const grid  = document.getElementById("files-grid");
+  const empty = document.getElementById("empty-state");
+
+  // 清除旧卡片（保留 empty-state）
+  Array.from(grid.children).forEach(c => {
+    if (!c.classList.contains("empty-state") && !c.id?.startsWith("sk")) c.remove();
+  });
+
+  if (filteredFiles.length === 0) {
+    empty.classList.add("visible");
+    return;
+  }
+  empty.classList.remove("visible");
+
+  filteredFiles.forEach((file, idx) => {
+    const card = buildCard(file);
+    grid.insertBefore(card, empty);
+
+    // 交错入场动画
+    setTimeout(() => card.classList.add("visible"), idx * 60);
+  });
+
+  // 卡片鼠标光效重绑
+  initCardMouseEffect();
+}
+
+/* ================================================================
+   BUILD SINGLE CARD
+================================================================ */
+function buildCard(file) {
+  const extInfo  = EXT_TYPE_MAP[file.ext] || { typeClass:"type-other", extClass:"ext-other" };
+  const icon     = EXT_ICON_MAP[file.ext] || "📁";
+  const dateStr  = formatDate(file.date);
+  const tagsHtml = (file.tags||[]).map(t =>
+    `<span class="tag" onclick="searchByTag('${t}')">${t}</span>`).join("");
+  const newBadge = file.isNew
+    ? `<span class="card-new-badge">NEW</span>`
+    : "";
+  const versionBadge = file.version
+    ? `<span class="file-ext ext-code" style="margin-left:4px">${file.version}</span>`
+    : "";
+
+  const card = document.createElement("div");
+  card.className = "file-card";
+  card.dataset.id = file.id;
+
+  card.innerHTML = `
+    <div class="card-progress" id="prog-${file.id}"></div>
+    <div class="card-header">
+      <div class="file-icon-wrap ${extInfo.typeClass}">
+        <span>${icon}</span>
+      </div>
+      <div class="card-meta">
+        <div class="file-name" title="${file.name}">${file.name}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px;">
+          <span class="file-ext ${extInfo.extClass}">.${file.ext}</span>
+          ${versionBadge}
+          ${newBadge}
+        </div>
+      </div>
+    </div>
+    <p class="file-desc">${file.desc}</p>
+    <div class="card-info-row">
+      <span class="info-chip">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+        </svg>
+        ${dateStr}
+      </span>
+      <span class="info-chip">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        ${file.size}
+      </span>
+    </div>
+    ${tagsHtml ? `<div class="card-tags">${tagsHtml}</div>` : ""}
+    <div class="card-bottom">
+      <div class="file-size-wrap">
+        <div class="file-size">${file.size}</div>
+        <div class="file-date">更新于 ${dateStr}</div>
+      </div>
+      <button class="download-btn" id="btn-${file.id}" onclick="handleDownload(${file.id},'${file.url}','${file.name}')">
+        <span class="btn-text" style="display:flex;align-items:center;gap:7px;">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          下载
+        </span>
+        <span class="btn-downloading">
+          <span class="spin"></span>
+          准备中…
+        </span>
+      </button>
+    </div>
+  `;
+
+  return card;
+}
+
+/* ================================================================
+   DOWNLOAD HANDLER（模拟进度 + 真实触发）
+================================================================ */
+function handleDownload(id, url, name) {
+  const btn  = document.getElementById(`btn-${id}`);
+  const prog = document.getElementById(`prog-${id}`);
+  if (!btn || btn.classList.contains("downloading")) return;
+
+  btn.classList.add("downloading");
+
+  // 进度条动画（模拟，实际下载由浏览器接管）
+  let pct = 0;
+  const step = () => {
+    pct = Math.min(pct + Math.random() * 18 + 4, 95);
+    if (prog) prog.style.width = pct + "%";
+    if (pct < 95) setTimeout(step, 120);
+  };
+  step();
+
+  setTimeout(() => {
+    // 触发真实下载
+    const a = document.createElement("a");
+    a.href     = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // 完成动画
+    if (prog) { prog.style.width = "100%"; prog.style.transition = "width 0.3s"; }
+    setTimeout(() => {
+      btn.classList.remove("downloading");
+      if (prog) { prog.style.width = "0%"; prog.style.transition = ""; }
+    }, 1200);
+
+    showToast("✅", "开始下载", `${name} 正在下载中，请稍候…`);
+  }, 1400);
+}
+
+/* ================================================================
+   SEARCH BY TAG（点击标签快速筛选）
+================================================================ */
+function searchByTag(tag) {
+  const inp = document.getElementById("search-input");
+  const clr = document.getElementById("search-clear");
+  inp.value   = tag;
+  searchQuery = tag.toLowerCase();
+  clr.classList.add("visible");
+  applyFilters();
+  inp.focus();
+  showToast("🏷️", "标签筛选", `正在显示包含「${tag}」的文件`);
+}
+
+/* ================================================================
+   TOAST
+================================================================ */
+function showToast(icon, title, msg) {
+  const container = document.getElementById("toastContainer");
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = `
+    <div class="toast-icon">${icon}</div>
+    <div class="toast-body">
+      <div class="toast-title">${title}</div>
+      <div class="toast-msg">${msg}</div>
+    </div>
+    <button class="toast-close" onclick="dismissToast(this.parentElement)">✕</button>
+    <div class="toast-progress"></div>
+  `;
+  container.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => toast.classList.add("show"));
+  });
+
+  setTimeout(() => dismissToast(toast), 3200);
+}
+
+function dismissToast(toast) {
+  if (!toast || toast.classList.contains("hide")) return;
+  toast.classList.add("hide");
+  setTimeout(() => toast.remove(), 600);
+}
+
+/* ================================================================
+   HERO STATS — 计数器动画
+================================================================ */
+function updateHeroStats() {
+  const total = FILES.length;
+  const bytes = FILES.reduce((s,f) => s + f.sizeBytes, 0);
+  const sizeMB = bytes / 1024 / 1024;
+  const sizeStr = sizeMB >= 1024
+    ? (sizeMB/1024).toFixed(1) + " GB"
+    : sizeMB.toFixed(1) + " MB";
+
+  animateCount("stat-total", 0, total, 1200, v => Math.round(v));
+  animateCount("stat-size",  0, parseFloat(sizeMB >= 1024 ? sizeMB/1024 : sizeMB),
+    1400, v => (sizeMB >= 1024 ? v.toFixed(1)+" GB" : v.toFixed(1)+" MB"));
+
+  // nav 文件数
+  document.getElementById("nav-file-count").textContent = total + " 个文件";
+}
+
+function animateCount(id, from, to, duration, formatter) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = performance.now();
+  const tick = now => {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1-p, 4);
+    el.textContent = formatter(from + (to - from) * ease);
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+/* ================================================================
+   FORMAT DATE
+================================================================ */
+function formatDate(str) {
+  if (!str) return "—";
+  const d = new Date(str);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 86400000);
+  if (diff === 0) return "今天";
+  if (diff === 1) return "昨天";
+  if (diff <= 7)  return diff + " 天前";
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`;
+}
+
+/* ================================================================
+   PARTICLE CANVAS — 星点背景
+================================================================ */
+function initParticles() {
+  const canvas = document.getElementById("bg-canvas");
+  const ctx    = canvas.getContext("2d");
+  let W, H, particles = [];
+
+  const resize = () => {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  };
+  resize();
+  window.addEventListener("resize", resize);
+
+  const COLORS = ["rgba(108,99,255,", "rgba(167,139,250,", "rgba(56,189,248,"];
+
+  for (let i = 0; i < 80; i++) {
+    particles.push({
+      x: Math.random() * 1920,
+      y: Math.random() * 1080,
+      r: Math.random() * 1.4 + 0.3,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      alpha: Math.random() * 0.5 + 0.1,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      pulse: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.012 + Math.random() * 0.018,
+    });
+  }
+
+  const draw = () => {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.pulse += p.pulseSpeed;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      const a = p.alpha * (0.65 + 0.35 * Math.sin(p.pulse));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + a + ")";
+      ctx.fill();
+    });
+
+    // 连线
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i+1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(108,99,255,${0.06 * (1 - dist/120)})`;
+          ctx.lineWidth = 0.6;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  };
+  draw();
+}
+
+/* ================================================================
+   CURSOR GLOW
+================================================================ */
+function initCursorGlow() {
+  const glow = document.getElementById("cursorGlow");
+  if (window.matchMedia("(pointer:coarse)").matches) {
+    glow.style.display = "none"; return;
+  }
+  document.addEventListener("mousemove", e => {
+    glow.style.left = e.clientX + "px";
+    glow.style.top  = e.clientY + "px";
+  });
+}
+
+/* ================================================================
+   SCROLL EFFECTS — navbar shadow + scroll-to-top
+================================================================ */
+function initScrollEffects() {
+  const navbar    = document.getElementById("navbar");
+  const scrollTop = document.getElementById("scrollTop");
+  window.addEventListener("scroll", () => {
+    navbar.classList.toggle("scrolled", window.scrollY > 30);
+    scrollTop.classList.toggle("visible", window.scrollY > 400);
+  });
+}
+
+/* ================================================================
+   CARD MOUSE PARALLAX（鼠标在卡片内移动时的光晕跟随）
+================================================================ */
+function initCardMouseEffect() {
+  document.querySelectorAll(".file-card").forEach(card => {
+    card.addEventListener("mousemove", e => {
+      const rect = card.getBoundingClientRect();
+      const mx = ((e.clientX - rect.left) / rect.width  * 100).toFixed(1);
+      const my = ((e.clientY - rect.top)  / rect.height * 100).toFixed(1);
+      card.style.setProperty("--mx", mx + "%");
+      card.style.setProperty("--my", my + "%");
+    });
+  });
+}
+</script>
+</body>
+</html>
